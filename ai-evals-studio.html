@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Evals Studio</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,400&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #0f0e0d;
+    --paper: #f7f4ef;
+    --cream: #ede9e1;
+    --accent: #d4421a;
+    --accent2: #1a6fd4;
+    --muted: #7a7570;
+    --border: #d8d4cc;
+    --pass: #1a7a3a;
+    --fail: #c0392b;
+    --grid: rgba(0,0,0,0.04);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    min-height: 100vh;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  /* Grid texture */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 40px 32px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* HEADER */
+  header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 56px;
+    padding-bottom: 32px;
+    border-bottom: 2px solid var(--ink);
+  }
+
+  .logo-area h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 2.6rem;
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+  }
+
+  .logo-area h1 span {
+    color: var(--accent);
+  }
+
+  .logo-area p {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-top: 6px;
+  }
+
+  .header-badge {
+    background: var(--ink);
+    color: var(--paper);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    padding: 6px 14px;
+    border-radius: 2px;
+    margin-top: 8px;
+  }
+
+  /* TABS */
+  .tabs {
+    display: flex;
+    gap: 0;
+    margin-bottom: 40px;
+    border-bottom: 2px solid var(--border);
+  }
+
+  .tab {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    padding: 12px 24px;
+    cursor: pointer;
+    color: var(--muted);
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    transition: all 0.2s;
+    background: none;
+    border-top: none;
+    border-left: none;
+    border-right: none;
+  }
+
+  .tab:hover { color: var(--ink); }
+  .tab.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+
+  /* PANELS */
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* STEP DESIGN */
+  .step {
+    display: flex;
+    gap: 32px;
+    margin-bottom: 48px;
+    animation: fadeUp 0.4s ease both;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .step-number {
+    font-family: 'Playfair Display', serif;
+    font-size: 3.5rem;
+    font-weight: 700;
+    color: var(--cream);
+    line-height: 1;
+    flex-shrink: 0;
+    width: 60px;
+    text-align: right;
+    -webkit-text-stroke: 1.5px var(--border);
+    color: transparent;
+  }
+
+  .step-content { flex: 1; }
+
+  .step-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--accent);
+    margin-bottom: 8px;
+  }
+
+  .step-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin-bottom: 16px;
+  }
+
+  /* FORM ELEMENTS */
+  label {
+    display: block;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+
+  input[type="text"], textarea, select {
+    width: 100%;
+    padding: 12px 16px;
+    border: 1.5px solid var(--border);
+    border-radius: 3px;
+    background: white;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.92rem;
+    color: var(--ink);
+    outline: none;
+    transition: border-color 0.2s;
+    margin-bottom: 16px;
+  }
+
+  input[type="text"]:focus, textarea:focus, select:focus {
+    border-color: var(--accent);
+  }
+
+  textarea { resize: vertical; min-height: 80px; }
+
+  .field-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  /* RUBRIC BUILDER */
+  .rubric-card {
+    background: white;
+    border: 1.5px solid var(--border);
+    border-radius: 4px;
+    padding: 20px;
+    margin-bottom: 12px;
+    position: relative;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  .rubric-card:hover {
+    border-color: var(--ink);
+    box-shadow: 3px 3px 0 var(--ink);
+  }
+
+  .rubric-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+
+  .rubric-card-header input {
+    font-family: 'Playfair Display', serif;
+    font-size: 1rem;
+    font-weight: 700;
+    border: none;
+    border-bottom: 1.5px solid var(--border);
+    border-radius: 0;
+    padding: 4px 0;
+    margin-bottom: 0;
+    flex: 1;
+  }
+
+  .delete-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--muted);
+    font-size: 1.2rem;
+    padding: 4px;
+    transition: color 0.2s;
+    margin-left: 12px;
+  }
+  .delete-btn:hover { color: var(--fail); }
+
+  .pass-fail-toggle {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+  }
+
+  .pf-option {
+    flex: 1;
+    padding: 10px;
+    text-align: center;
+    border: 1.5px solid var(--border);
+    border-radius: 3px;
+    cursor: pointer;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    transition: all 0.15s;
+    user-select: none;
+  }
+
+  .pf-option.pass { color: var(--pass); }
+  .pf-option.fail { color: var(--fail); }
+  .pf-option.pass.selected { background: var(--pass); color: white; border-color: var(--pass); }
+  .pf-option.fail.selected { background: var(--fail); color: white; border-color: var(--fail); }
+
+  /* BUTTONS */
+  .btn {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    padding: 12px 24px;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.15s;
+    border: 1.5px solid;
+  }
+
+  .btn-primary {
+    background: var(--ink);
+    color: var(--paper);
+    border-color: var(--ink);
+  }
+  .btn-primary:hover { background: var(--accent); border-color: var(--accent); }
+
+  .btn-secondary {
+    background: transparent;
+    color: var(--ink);
+    border-color: var(--border);
+  }
+  .btn-secondary:hover { border-color: var(--ink); }
+
+  .btn-accent {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+  }
+  .btn-accent:hover { background: #b83512; }
+
+  .btn-row {
+    display: flex;
+    gap: 12px;
+    margin-top: 12px;
+    align-items: center;
+  }
+
+  /* TEST CASES PANEL */
+  .test-case-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 12px;
+    align-items: start;
+    margin-bottom: 12px;
+    padding: 16px;
+    background: white;
+    border: 1.5px solid var(--border);
+    border-radius: 4px;
+    transition: all 0.2s;
+  }
+
+  .test-case-row:hover {
+    border-color: var(--ink);
+    box-shadow: 3px 3px 0 var(--ink);
+  }
+
+  .expected-badge {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    padding: 3px 8px;
+    border-radius: 2px;
+    margin-top: 8px;
+    display: inline-block;
+    cursor: pointer;
+    transition: all 0.15s;
+    border: 1.5px solid;
+  }
+
+  .expected-badge.pass { color: var(--pass); border-color: var(--pass); }
+  .expected-badge.fail { color: var(--fail); border-color: var(--fail); }
+  .expected-badge.pass.active { background: var(--pass); color: white; }
+  .expected-badge.fail.active { background: var(--fail); color: white; }
+
+  /* RESULTS PANEL */
+  .results-header {
+    background: var(--ink);
+    color: var(--paper);
+    padding: 28px 32px;
+    border-radius: 4px;
+    margin-bottom: 32px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+  }
+
+  .score-big {
+    font-family: 'Playfair Display', serif;
+    font-size: 4rem;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .score-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: rgba(247,244,239,0.6);
+    margin-bottom: 8px;
+  }
+
+  .result-verdict {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    padding: 8px 16px;
+    border-radius: 3px;
+    border: 1.5px solid rgba(255,255,255,0.3);
+  }
+
+  .dimension-result {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 20px;
+    border: 1.5px solid var(--border);
+    border-radius: 4px;
+    margin-bottom: 10px;
+    background: white;
+    transition: all 0.2s;
+  }
+
+  .dimension-result:hover { border-color: var(--ink); }
+
+  .dim-name {
+    flex: 1;
+    font-family: 'Playfair Display', serif;
+    font-size: 0.98rem;
+    font-weight: 700;
+  }
+
+  .dim-status {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    padding: 4px 12px;
+    border-radius: 2px;
+    font-weight: 500;
+  }
+
+  .dim-status.pass { background: #e6f5ec; color: var(--pass); }
+  .dim-status.fail { background: #fbeaea; color: var(--fail); }
+  .dim-status.na { background: var(--cream); color: var(--muted); }
+
+  .dim-notes {
+    font-size: 0.82rem;
+    color: var(--muted);
+    flex: 2;
+    font-style: italic;
+  }
+
+  /* DIVIDER */
+  .divider {
+    border: none;
+    border-top: 1.5px solid var(--border);
+    margin: 40px 0;
+  }
+
+  /* INSIGHT BOX */
+  .insight-box {
+    background: var(--cream);
+    border-left: 3px solid var(--accent);
+    padding: 16px 20px;
+    margin-bottom: 24px;
+    border-radius: 0 3px 3px 0;
+  }
+
+  .insight-box .insight-author {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+    margin-bottom: 6px;
+  }
+
+  .insight-box p {
+    font-size: 0.88rem;
+    line-height: 1.6;
+    color: var(--ink);
+  }
+
+  /* CHECKLIST */
+  .checklist-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+  }
+
+  .checklist-item:last-child { border-bottom: none; }
+
+  .check-box {
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--border);
+    border-radius: 3px;
+    flex-shrink: 0;
+    margin-top: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    font-size: 0.7rem;
+    color: white;
+  }
+
+  .checklist-item.done .check-box {
+    background: var(--pass);
+    border-color: var(--pass);
+  }
+
+  .checklist-item .check-text {
+    font-size: 0.9rem;
+    line-height: 1.5;
+    flex: 1;
+  }
+
+  .checklist-item.done .check-text { color: var(--muted); text-decoration: line-through; }
+
+  /* EXPORT */
+  .export-preview {
+    background: var(--ink);
+    color: #a8d8a8;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    padding: 24px;
+    border-radius: 4px;
+    overflow-x: auto;
+    white-space: pre;
+    line-height: 1.8;
+    margin-top: 16px;
+  }
+
+  /* Animations */
+  .panel.active .step:nth-child(1) { animation-delay: 0s; }
+  .panel.active .step:nth-child(2) { animation-delay: 0.08s; }
+  .panel.active .step:nth-child(3) { animation-delay: 0.16s; }
+  .panel.active .step:nth-child(4) { animation-delay: 0.24s; }
+
+  /* Tooltip */
+  .tip {
+    font-size: 0.78rem;
+    color: var(--muted);
+    font-style: italic;
+    margin-top: -10px;
+    margin-bottom: 14px;
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <div class="logo-area">
+      <h1>AI Evals <span>Studio</span></h1>
+      <p>Design · Score · Ship</p>
+    </div>
+    <div class="header-badge">Practitioner Edition</div>
+  </header>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('design')">1 · Design</button>
+    <button class="tab" onclick="switchTab('rubric')">2 · Rubric</button>
+    <button class="tab" onclick="switchTab('testcases')">3 · Test Cases</button>
+    <button class="tab" onclick="switchTab('score')">4 · Score</button>
+    <button class="tab" onclick="switchTab('export')">5 · Export</button>
+  </div>
+
+  <!-- ══════════════ PANEL 1: DESIGN ══════════════ -->
+  <div id="panel-design" class="panel active">
+
+    <div class="insight-box">
+      <div class="insight-author">Brendan Foody · Insight</div>
+      <p>"If the model is the product, then the eval is the product requirement document." Define what success looks like before you write a single line of prompt.</p>
+    </div>
+
+    <div class="step">
+      <div class="step-number">01</div>
+      <div class="step-content">
+        <div class="step-label">What are you evaluating?</div>
+        <div class="step-title">Name Your Eval</div>
+        <label>Eval Name</label>
+        <input type="text" id="evalName" placeholder="e.g. AI Onboarding Coach — Response Quality" />
+        <label>AI Feature / Product Being Tested</label>
+        <input type="text" id="featureDesc" placeholder="e.g. Employee-facing AI assistant that answers HR policy questions" />
+        <label>Stakeholders</label>
+        <input type="text" id="stakeholders" placeholder="e.g. HR Leaders, People Ops, CHRO" />
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-number">02</div>
+      <div class="step-content">
+        <div class="step-label">Define Success</div>
+        <div class="step-title">What Does "Good" Look Like?</div>
+        <label>Describe the ideal output in plain language</label>
+        <textarea id="goodDef" placeholder="A good response: accurately answers the question, cites the correct policy, uses a friendly tone appropriate for an employee, avoids hallucinating benefits that don't exist..."></textarea>
+        <label>Most Common Failure Modes (from manual review)</label>
+        <textarea id="failureModes" placeholder="1. Hallucinating policy details not in the source doc&#10;2. Being overly legalistic / too formal&#10;3. Giving outdated benefit information&#10;4. Not surfacing the right escalation path"></textarea>
+        <div class="tip">Pro tip: You need to manually review 30–50 real outputs before you can write good rubrics. No shortcuts.</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-number">03</div>
+      <div class="step-content">
+        <div class="step-label">Measurement Method</div>
+        <div class="step-title">How Will You Judge?</div>
+        <label>Primary Evaluation Method</label>
+        <select id="evalMethod">
+          <option value="">Select a method...</option>
+          <option value="human">Human Expert Review</option>
+          <option value="llm-judge">LLM-as-Judge (with human validation)</option>
+          <option value="hybrid">Hybrid: LLM triage + human spot-check</option>
+          <option value="automated">Automated (regex / structured output check)</option>
+        </select>
+        <label>If LLM-as-Judge: How will you validate the judge?</label>
+        <input type="text" id="judgeValidation" placeholder="e.g. Compare judge scores to 100 human-labeled examples; require >90% agreement" />
+        <div class="tip">Never use an LLM judge without validating it against human experts first.</div>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="switchTab('rubric')">Next: Build Rubric →</button>
+    </div>
+  </div>
+
+  <!-- ══════════════ PANEL 2: RUBRIC ══════════════ -->
+  <div id="panel-rubric" class="panel">
+
+    <div class="insight-box">
+      <div class="insight-author">Core Principle · Pass/Fail over Likert</div>
+      <p>Force binary decisions. "1–5 scales produce meaningless averages." Every dimension must resolve to Pass or Fail — no partial credit, no middle ground.</p>
+    </div>
+
+    <div class="step">
+      <div class="step-number">01</div>
+      <div class="step-content">
+        <div class="step-label">Evaluation Dimensions</div>
+        <div class="step-title">Build Your Rubric</div>
+        <p style="font-size:0.88rem; color:var(--muted); margin-bottom:20px; line-height:1.6;">Each dimension is one axis of quality. Keep it specific — vague criteria ("the output should be good") are not rubrics.</p>
+
+        <div id="rubricList"></div>
+
+        <div class="btn-row">
+          <button class="btn btn-secondary" onclick="addDimension()">+ Add Dimension</button>
+          <button class="btn btn-primary" onclick="switchTab('testcases')">Next: Test Cases →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════ PANEL 3: TEST CASES ══════════════ -->
+  <div id="panel-testcases" class="panel">
+
+    <div class="step">
+      <div class="step-number">01</div>
+      <div class="step-content">
+        <div class="step-label">Test Cases</div>
+        <div class="step-title">Add Representative Inputs</div>
+        <p style="font-size:0.88rem; color:var(--muted); margin-bottom:20px; line-height:1.6;">Include edge cases, adversarial inputs, and samples from real user sessions. Label each with expected outcome.</p>
+
+        <div id="testList"></div>
+
+        <div class="btn-row">
+          <button class="btn btn-secondary" onclick="addTestCase()">+ Add Test Case</button>
+          <button class="btn btn-primary" onclick="switchTab('score')">Next: Score →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════ PANEL 4: SCORE ══════════════ -->
+  <div id="panel-score" class="panel">
+
+    <div id="scoreSummary" class="results-header">
+      <div>
+        <div class="score-label">Overall Score</div>
+        <div class="score-big" id="overallScore">—</div>
+        <div style="font-family:'DM Mono',monospace; font-size:0.7rem; color:rgba(247,244,239,0.5); margin-top:8px;" id="scoreSubline">Score dimensions below to see results</div>
+      </div>
+      <div id="verdictBadge" class="result-verdict">Pending</div>
+    </div>
+
+    <div class="step">
+      <div class="step-number">01</div>
+      <div class="step-content">
+        <div class="step-label">Score Each Dimension</div>
+        <div class="step-title">Mark Pass / Fail</div>
+        <div id="scoreDimensions"></div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-number">02</div>
+      <div class="step-content">
+        <div class="step-label">Readiness Checklist</div>
+        <div class="step-title">Before You Ship</div>
+        <div id="checklist">
+          <div class="checklist-item" onclick="toggleCheck(this)">
+            <div class="check-box">✓</div>
+            <div class="check-text">Manually reviewed ≥30 real outputs to identify failure patterns</div>
+          </div>
+          <div class="checklist-item" onclick="toggleCheck(this)">
+            <div class="check-box">✓</div>
+            <div class="check-text">Every rubric dimension has a specific, measurable pass/fail criterion</div>
+          </div>
+          <div class="checklist-item" onclick="toggleCheck(this)">
+            <div class="check-box">✓</div>
+            <div class="check-text">LLM judge (if used) validated against ≥100 human-labeled examples</div>
+          </div>
+          <div class="checklist-item" onclick="toggleCheck(this)">
+            <div class="check-box">✓</div>
+            <div class="check-text">Test cases include edge cases and adversarial inputs</div>
+          </div>
+          <div class="checklist-item" onclick="toggleCheck(this)">
+            <div class="check-box">✓</div>
+            <div class="check-text">Evals aligned to actual user needs (not just technical metrics)</div>
+          </div>
+          <div class="checklist-item" onclick="toggleCheck(this)">
+            <div class="check-box">✓</div>
+            <div class="check-text">Baseline established for future comparison</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="switchTab('export')">Next: Export →</button>
+    </div>
+  </div>
+
+  <!-- ══════════════ PANEL 5: EXPORT ══════════════ -->
+  <div id="panel-export" class="panel">
+
+    <div class="step">
+      <div class="step-number">01</div>
+      <div class="step-content">
+        <div class="step-label">Export Your Eval</div>
+        <div class="step-title">Eval as Spec (JSON / Markdown)</div>
+        <p style="font-size:0.88rem; color:var(--muted); margin-bottom:20px; line-height:1.6;">Your eval is the product requirement document. Share it with engineers, product managers, and leadership.</p>
+
+        <div class="btn-row">
+          <button class="btn btn-accent" onclick="generateExport()">Generate Export</button>
+          <button class="btn btn-secondary" onclick="copyExport()">Copy to Clipboard</button>
+        </div>
+
+        <div id="exportPreview" class="export-preview" style="display:none;"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ─── STATE ───────────────────────────────────────────
+let dimensions = [];
+let testCases = [];
+let dimCounter = 0;
+let tcCounter = 0;
+
+// ─── TABS ─────────────────────────────────────────────
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelector(`[onclick="switchTab('${name}')"]`).classList.add('active');
+  document.getElementById(`panel-${name}`).classList.add('active');
+
+  if (name === 'score') renderScoreDimensions();
+  if (name === 'export') generateExport();
+}
+
+// ─── DIMENSIONS ──────────────────────────────────────
+function addDimension() {
+  dimCounter++;
+  const id = dimCounter;
+  dimensions.push({ id, name: 'New Dimension', criterion: '', weight: 'required', notes: '' });
+  renderRubric();
+}
+
+function removeDimension(id) {
+  dimensions = dimensions.filter(d => d.id !== id);
+  renderRubric();
+}
+
+function renderRubric() {
+  const container = document.getElementById('rubricList');
+  if (dimensions.length === 0) {
+    container.innerHTML = `<p style="color:var(--muted); font-size:0.85rem; font-style:italic; margin-bottom:20px;">No dimensions yet. Click "+ Add Dimension" to start building your rubric.</p>`;
+    return;
+  }
+
+  container.innerHTML = dimensions.map(d => `
+    <div class="rubric-card" id="dim-${d.id}">
+      <div class="rubric-card-header">
+        <input type="text" value="${d.name}" oninput="updateDim(${d.id}, 'name', this.value)" placeholder="Dimension name (e.g. Factual Accuracy)" />
+        <button class="delete-btn" onclick="removeDimension(${d.id})">×</button>
+      </div>
+      <label>Pass Criterion (specific & measurable)</label>
+      <textarea oninput="updateDim(${d.id}, 'criterion', this.value)" placeholder="PASS if: the response cites the correct policy number and no hallucinated facts are present">${d.criterion}</textarea>
+      <div style="display:flex; gap:12px; align-items:center;">
+        <div style="flex:1">
+          <label>Weight</label>
+          <select onchange="updateDim(${d.id}, 'weight', this.value)" style="margin-bottom:0">
+            <option value="required" ${d.weight==='required'?'selected':''}>Required (must pass)</option>
+            <option value="important" ${d.weight==='important'?'selected':''}>Important</option>
+            <option value="nice" ${d.weight==='nice'?'selected':''}>Nice to have</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function updateDim(id, field, value) {
+  const d = dimensions.find(d => d.id === id);
+  if (d) d[field] = value;
+}
+
+// ─── TEST CASES ───────────────────────────────────────
+function addTestCase() {
+  tcCounter++;
+  const id = tcCounter;
+  testCases.push({ id, input: '', context: '', expected: 'pass' });
+  renderTestCases();
+}
+
+function removeTestCase(id) {
+  testCases = testCases.filter(t => t.id !== id);
+  renderTestCases();
+}
+
+function renderTestCases() {
+  const container = document.getElementById('testList');
+  if (testCases.length === 0) {
+    container.innerHTML = `<p style="color:var(--muted); font-size:0.85rem; font-style:italic; margin-bottom:20px;">No test cases yet. Click "+ Add Test Case" to start.</p>`;
+    return;
+  }
+
+  container.innerHTML = testCases.map(tc => `
+    <div class="test-case-row">
+      <div>
+        <label>Input Prompt</label>
+        <textarea oninput="updateTC(${tc.id}, 'input', this.value)" placeholder="What would a user ask?">${tc.input}</textarea>
+        <label>Context / System State</label>
+        <input type="text" oninput="updateTC(${tc.id}, 'context', this.value)" value="${tc.context}" placeholder="e.g. User is a new hire, day 3" />
+      </div>
+      <div>
+        <label>Expected Behavior</label>
+        <textarea oninput="updateTC(${tc.id}, 'expected_desc', this.value)" placeholder="What should the ideal response contain or avoid?"></textarea>
+        <span class="expected-badge pass ${tc.expected==='pass'?'active':''}" onclick="toggleExpected(${tc.id}, 'pass')">✓ Should Pass</span>
+        <span class="expected-badge fail ${tc.expected==='fail'?'active':''}" onclick="toggleExpected(${tc.id}, 'fail')">✗ Edge Case</span>
+      </div>
+      <button class="delete-btn" onclick="removeTestCase(${tc.id})" style="margin-top:24px;">×</button>
+    </div>
+  `).join('');
+}
+
+function updateTC(id, field, value) {
+  const tc = testCases.find(t => t.id === id);
+  if (tc) tc[field] = value;
+}
+
+function toggleExpected(id, val) {
+  const tc = testCases.find(t => t.id === id);
+  if (tc) { tc.expected = val; renderTestCases(); }
+}
+
+// ─── SCORING ─────────────────────────────────────────
+let scores = {};
+
+function renderScoreDimensions() {
+  const container = document.getElementById('scoreDimensions');
+  if (dimensions.length === 0) {
+    container.innerHTML = `<p style="color:var(--muted); font-style:italic; font-size:0.85rem;">Add dimensions in the Rubric tab first.</p>`;
+    return;
+  }
+
+  container.innerHTML = dimensions.map(d => {
+    const s = scores[d.id] || 'na';
+    return `
+      <div class="dimension-result" id="score-dim-${d.id}">
+        <div class="dim-name">${d.name || 'Unnamed'}</div>
+        <div style="font-size:0.78rem; color:var(--muted); flex:2; font-style:italic;">${d.criterion || 'No criterion defined'}</div>
+        <div style="display:flex; gap:8px;">
+          <span class="dim-status pass" style="cursor:pointer; ${s==='pass'?'':'opacity:0.35'}" onclick="setScore(${d.id}, 'pass')">Pass</span>
+          <span class="dim-status fail" style="cursor:pointer; ${s==='fail'?'':'opacity:0.35'}" onclick="setScore(${d.id}, 'fail')">Fail</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function setScore(id, val) {
+  scores[id] = val;
+  renderScoreDimensions();
+  updateOverallScore();
+}
+
+function updateOverallScore() {
+  const scored = dimensions.filter(d => scores[d.id]);
+  const passed = scored.filter(d => scores[d.id] === 'pass');
+  const required = dimensions.filter(d => d.weight === 'required');
+  const requiredFailed = required.some(d => scores[d.id] === 'fail');
+
+  if (scored.length === 0) return;
+
+  const pct = Math.round((passed.length / scored.length) * 100);
+  document.getElementById('overallScore').textContent = pct + '%';
+  document.getElementById('scoreSubline').textContent = `${passed.length} / ${scored.length} dimensions passing`;
+
+  const verdict = document.getElementById('verdictBadge');
+  if (requiredFailed) {
+    verdict.textContent = '✗ Not Ready — Required Dimensions Failed';
+    verdict.style.background = 'rgba(192,57,43,0.2)';
+    verdict.style.borderColor = '#c0392b';
+  } else if (pct >= 80) {
+    verdict.textContent = '✓ Ready to Ship';
+    verdict.style.background = 'rgba(26,122,58,0.2)';
+    verdict.style.borderColor = '#1a7a3a';
+  } else {
+    verdict.textContent = '⚠ Needs Work';
+    verdict.style.background = 'rgba(212,66,26,0.12)';
+    verdict.style.borderColor = '#d4421a';
+  }
+}
+
+// ─── CHECKLIST ────────────────────────────────────────
+function toggleCheck(el) {
+  el.classList.toggle('done');
+}
+
+// ─── EXPORT ───────────────────────────────────────────
+function generateExport() {
+  const name = document.getElementById('evalName').value || 'Untitled Eval';
+  const feature = document.getElementById('featureDesc').value;
+  const good = document.getElementById('goodDef').value;
+  const failures = document.getElementById('failureModes').value;
+  const method = document.getElementById('evalMethod').value;
+
+  const exportObj = {
+    eval_name: name,
+    feature_description: feature,
+    definition_of_good: good,
+    known_failure_modes: failures.split('\n').filter(l => l.trim()),
+    evaluation_method: method,
+    rubric: dimensions.map(d => ({
+      dimension: d.name,
+      pass_criterion: d.criterion,
+      weight: d.weight,
+      current_score: scores[d.id] || 'unscored'
+    })),
+    test_cases: testCases.map(tc => ({
+      input: tc.input,
+      context: tc.context,
+      expected: tc.expected
+    })),
+    metadata: {
+      generated: new Date().toISOString(),
+      tool: 'AI Evals Studio'
+    }
+  };
+
+  const json = JSON.stringify(exportObj, null, 2);
+  const preview = document.getElementById('exportPreview');
+  preview.textContent = json;
+  preview.style.display = 'block';
+}
+
+function copyExport() {
+  const text = document.getElementById('exportPreview').textContent;
+  if (!text) { generateExport(); }
+  navigator.clipboard.writeText(document.getElementById('exportPreview').textContent)
+    .then(() => alert('Copied to clipboard!'))
+    .catch(() => alert('Select the text and copy manually.'));
+}
+
+// ─── INIT ─────────────────────────────────────────────
+// Seed with example dimensions
+(function init() {
+  dimensions = [
+    { id: ++dimCounter, name: 'Factual Accuracy', criterion: 'PASS if: no hallucinated facts, all claims traceable to source documents', weight: 'required', notes: '' },
+    { id: ++dimCounter, name: 'Tone & Clarity', criterion: 'PASS if: uses accessible language, avoids jargon, appropriate warmth for audience', weight: 'important', notes: '' },
+    { id: ++dimCounter, name: 'Correct Escalation Path', criterion: 'PASS if: response includes the right next-step or escalation contact when appropriate', weight: 'important', notes: '' },
+  ];
+  testCases = [
+    { id: ++tcCounter, input: 'What is the company PTO policy for new hires?', context: 'User: new hire, day 1', expected: 'pass' },
+    { id: ++tcCounter, input: 'Can I roll over 30 days of unused PTO?', context: 'User: 2-year employee', expected: 'pass' },
+  ];
+  renderRubric();
+  renderTestCases();
+})();
+</script>
+</body>
+</html>
